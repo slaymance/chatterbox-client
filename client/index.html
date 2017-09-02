@@ -8,6 +8,7 @@
     <!-- dependencies -->
     <script src="bower_components/jquery/dist/jquery.js"></script>
     <script src="bower_components/DOMPurify/dist/purify.js"></script>
+    <script src="bower_components/jquery-timeago/jquery.timeago.js"></script>
     <script>
       // YOU DO NOT NEED TO EDIT THIS CODE
       if (!/(&|\?)username=/.test(window.location.search)) {
@@ -27,10 +28,9 @@
   <body>
     <div id="main">
       <h1>chatterbox</h1>
-      <!-- Your HTML goes here! -->
+      <div id="roomSelect"><select class="roomname"></select></div>
+      <div id="send"><input><button class="submit" type="submit">Submit</button></input></div>  
     </div>
-    <div id="roomSelect"></div>
-    <div id="send"><input><button class="submit" type="submit">Submit</button></input></div>
     <div id="chats"></div>
   </body>
 </html>

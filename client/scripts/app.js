@@ -7,9 +7,29 @@ let app = {
     $('.username').on('click', function(user) {
       app.handleUsernameClick(user.data);
     });
-    $('#send .submit').unbind('submit').bind('submit', function(element) {
+    $('#send .submit').on('click', function(element) {
       app.handleSubmit(element);
     });
+    // console.log(`options: ${$('option')}`);
+    $('select').on('change', function(option) {
+      // console.log(`this: ${this}`);
+      let $messageBlocks = $('.messageBlock');
+      // console.log(`$messageBlocks: ${$messageBlocks}`);
+      for (let i = 0; i < $messageBlocks.length; i++) {
+        // console.log(`$messageBlocks[i]: ${$messageBlocks[i]}`);
+        
+        if ($($messageBlocks[i]).data('roomname') !== this.options[option.target.selectedIndex].text) {
+          $($messageBlocks[i]).hide();
+        } else {
+          $($messageBlocks[i]).show();
+        }
+      }
+    });
+
+// $(document).on('change', '._someDropDown', function(e) {
+//     console.log(this.options[e.target.selectedIndex].text);
+// });
+
     app.fetch();
     // console.log('message:' + data);
     // renderMessage(message);
@@ -20,7 +40,7 @@ let app = {
       // This is the url you should use to communicate with the parse API server.
       url: 'http://parse.sfm8.hackreactor.com/chatterbox/classes/messages',
       type: 'POST',
-      data: message,
+      data: JSON.stringify(message),
       contentType: 'application/json',
       success: function (data) {
         console.log('chatterbox: Message sent');
@@ -36,19 +56,16 @@ let app = {
     $.ajax({
       url: 'http://parse.sfm8.hackreactor.com/chatterbox/classes/messages',
       type: 'GET',
-      data: 'where={"createdAt":{"$gte":{"__type":"Date","iso":"2017-09-01T00:36:50.246Z"}}}',
+      data: 'order=-createdAt',
       contentType: 'application/json',
       success: function (data) {
         console.log('chatterbox: Message sent');
-        app.messages = data;
-        // console.log(data.results);
         app.getMessage(data);
       },
       error: function (data) {
       // See: https://developer.mozilla.org/en-US/docs/Web/API/console.error
         console.error('chatterbox: Failed to send message', data);
       }
-
 
     });
   },
@@ -58,23 +75,48 @@ let app = {
   },
   
   renderMessage: function(message) {
-    // console.log(message);
     cleanUsername = DOMPurify.sanitize(message.username);
     cleanText = DOMPurify.sanitize(message.text);
+    cleanRoomname = DOMPurify.sanitize(message.roomname);
 
-    $('#chats').prepend('<span></span>');
+    if (cleanUsername.length === 0 || cleanText.length === 0) {
+      return;
+    }
 
-    let $element = $('#chats :first-child');
-    $element.addClass('username');
-    $element.data(cleanUsername); 
-    $element.text(`${cleanUsername}: ${cleanText}`);
+    let $messageBlock = $('<div class="messageBlock" style="display: none";></div>');
+    let $messageHeader = $('<div class="messageHeader"><span class="username"></span><span class="divider"></span><span class="timestamp"></span></div>');
+    let $messageText = $('<div class="messageText"></div>');
+
+    $messageBlock.attr('data-roomname', cleanRoomname);
+    $messageHeader.find('.username').text(cleanUsername);
+    $messageHeader.find('.username').attr('data-user', cleanUsername);
+    $messageHeader.find('.divider').text(' ');
+    $messageHeader.find('.timestamp').attr('data-timestamp', message.createdAt);
+    $messageHeader.find('.timestamp').text($.timeago(message.createdAt));
+    $messageText.text(cleanText);
+
+    $messageBlock.appendTo($('#chats'));
+    $messageHeader.appendTo($messageBlock);
+    $messageText.insertAfter($messageHeader);
   },
   
   renderRoom: function(message) {
     cleanRoom = DOMPurify.sanitize(message.roomname);
 
-    $('#roomSelect').append('<span></span>');
-    $('#roomSelect :first-child').text(cleanRoom);
+    var rooms = $('.roomname option');
+
+    for (var i = 0; i < rooms.length; i++) {
+      if ($(rooms[i]).data('roomname') === cleanRoom || cleanRoom.replace(' ').length === 0) {
+        return;
+      }
+    }
+
+    $roomname = $('<option></option>');
+    $roomname.attr('data-roomname', cleanRoom);
+    $roomname.text(cleanRoom);
+
+    $roomname.appendTo($('#roomSelect .roomname'));
+    // $('#roomSelect :first-child').text(cleanRoom);
   },
   
   handleUsernameClick: function(username) {
@@ -82,19 +124,32 @@ let app = {
   },
   
   handleSubmit: function(submit) {
-    console.log(submit);
+    var message = {
+      username: window.location.search.split('=').pop(),
+      text: $('#send input').val(),
+      roomname: 'lobby'
+    };
+    this.send(message);
+    
   },
+
 
   getMessage: function(data) {
     for (let i = 0; i < data.results.length; i++) {
       app.renderMessage(data.results[i]);
+      app.renderRoom(data.results[i]);
     }
+    app.showMessage();
+  },
+
+  showMessage: function() {
+    $('.messageBlock').show(500);
   }
 
 };
 
 $(document).ready(function() {
-  app.init();  
+  app.init();
 });
 
 
