@@ -24,11 +24,9 @@ let app = {
           $($messageBlocks[i]).show();
         }
       }
+
     });
 
-// $(document).on('change', '._someDropDown', function(e) {
-//     console.log(this.options[e.target.selectedIndex].text);
-// });
 
     app.fetch();
     // console.log('message:' + data);
@@ -67,6 +65,26 @@ let app = {
         console.error('chatterbox: Failed to send message', data);
       }
 
+    });
+  },
+
+  fetchNewMessage: function() {
+    var time = $('.timestamp').first().data('timestamp');
+    console.log(time);
+
+    $.ajax({
+      url: 'http://parse.sfm8.hackreactor.com/chatterbox/classes/messages',
+      type: 'GET',
+      data: 'where={"createdAt":{"$gte":{"__type":"Date","iso":"' + time + '"}}}',
+      contentType: 'application/json',
+      success: function (data) {
+        console.log('chatterbox: Message sent');
+        app.getMessage(data);
+      },
+      error: function (data) {
+      // See: https://developer.mozilla.org/en-US/docs/Web/API/console.error
+        console.error('chatterbox: Failed to send message', data);
+      }
     });
   },
   
@@ -127,29 +145,41 @@ let app = {
     var message = {
       username: window.location.search.split('=').pop(),
       text: $('#send input').val(),
-      roomname: 'lobby'
+      roomname: $('select option:selected').val()
     };
     this.send(message);
     
   },
-
 
   getMessage: function(data) {
     for (let i = 0; i < data.results.length; i++) {
       app.renderMessage(data.results[i]);
       app.renderRoom(data.results[i]);
     }
-    app.showMessage();
+    app.showMessage(data);
   },
 
-  showMessage: function() {
-    $('.messageBlock').show(500);
+  showMessage: function(data) {
+    let cleanRoom = DOMPurify.sanitize(data.roomname);
+    let $messageBlocks = $('.messageBlock');
+    for (let i = 0; i < $messageBlocks.length; i++) {
+      if ($($messageBlocks[i]).data('roomname') === $('select option:selected').val()) {
+        $($messageBlocks[i]).show(500);
+      } else {
+        $($messageBlocks[i]).hide(500);
+      }
+    }
+    // $('.messageBlock').show(500);
   }
 
 };
 
 $(document).ready(function() {
   app.init();
+  setInterval(function() {
+    app.fetchNewMessage();
+    
+  }, 1000);
 });
 
 
