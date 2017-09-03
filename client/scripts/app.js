@@ -1,7 +1,8 @@
 class App {
   constructor() {
     this.firstFetch = true;
-
+    this.roomnames = {};
+    this.messages = {};
   }
 
   init () {
@@ -42,6 +43,7 @@ class App {
   }
 
   send (message) {
+    let context = this;
     $.ajax({
       // This is the url you should use to communicate with the parse API server.
       url: 'http://parse.sfm8.hackreactor.com/chatterbox/classes/messages',
@@ -50,6 +52,7 @@ class App {
       contentType: 'application/json',
       success: function (data) {
         console.log('chatterbox: Message sent');
+        context.fetch();
       },
       error: function (data) {
       // See: https://developer.mozilla.org/en-US/docs/Web/API/console.error
@@ -60,20 +63,21 @@ class App {
 
   fetch () {
     let dataString; 
-    let time = $('.timestamp').first().data('timestamp');
+    let time = new Date($('.timestamp').first().data('timestamp'));
+    time.setSeconds(time.getSeconds() + 1);
     let context = this;
-    console.log(this);
 
-    this.firstFetch ? dataString = 'order=-createdAt' : `where={"createdAt":{"$gte":{"__type":"Date","iso":"${time}"}}}`;
+    // this.firstFetch ? dataString = 'order=-createdAt' : dataString = 'where={"createdAt":{"$gte":{"__type":"Date","iso":"' + time + '"}}}';
 
     $.ajax({
-      url: 'http://parse.sfm8.hackreactor.com/chatterbox/classes/messages',
+      url: 'http://parse.sfm8.hackreactor.com/chatterbox/classes/messages?order=-createdAt',
       type: 'GET',
       data: dataString,
       contentType: 'application/json',
       success: (data) => {
         console.log('chatterbox: Fetch request completed');
         context.parseData(data);
+
       },
       error: function (data) {
       // See: https://developer.mozilla.org/en-US/docs/Web/API/console.error
@@ -89,16 +93,21 @@ class App {
       let cleanRoom = DOMPurify.sanitize(message.roomname);
       let cleanUsername = DOMPurify.sanitize(message.username);
       let cleanText = DOMPurify.sanitize(message.text);
-      this.renderMessages(cleanRoom, cleanUsername, cleanText, message.createdAt);
-      this.renderRoomNames(cleanRoom, cleanUsername, cleanText);
+      this.renderMessages(cleanRoom, cleanUsername, cleanText, message.createdAt, message.objectId);
+      this.renderRoomNames(cleanRoom);
     }
     this.firstFetch = false;
   }
 
-  renderMessages (roomname, username, text, timestamp) {
-    if (roomname.length === 0 || text.length === 0) {
+  renderMessages (roomname, username, text, timestamp, id) {
+    if (this.messages[id]) {
       return;
+    } else {
+      this.messages[id] = true;
     }
+    // if (roomname.length === 0 || text.length === 0) {
+    //   return;
+    // }
 
     let $messageBlock = $('<div class="messageBlock"></div>');
     let $messageHeader = $('<div class="messageHeader"><span class="username"></span><span class="divider"></span><span class="timestamp"></span></div>');
@@ -119,13 +128,11 @@ class App {
 
   renderRoomNames (roomname) {
     let rooms = $('.roomname option');
-
-    if (rooms.length > 0) {
-      for (let i = 0; i < rooms.length; i++) {
-        if ($(rooms[i]).data('roomname') === roomname || roomname.replace(' ').length === 0) {
-          return;
-        }
-      }
+    // console.log(rooms);
+    if (this.roomnames[roomname]) {
+      return;
+    } else {
+      this.roomnames[roomname] = true;
     }
 
     let $roomname = $('<option></option>');
@@ -136,6 +143,9 @@ class App {
   }
 
 
+  clearMessages () {
+    $('#chats').children().remove();
+  }
 
 }
 
@@ -144,6 +154,9 @@ let app = new App();
 $(document).ready(function() {
   app.fetch();
   app.init();
+  setInterval(() => {
+    app.fetch();
+  }, 1000);
 });
 
 
